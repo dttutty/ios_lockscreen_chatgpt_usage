@@ -1,28 +1,38 @@
 # iOS Lockscreen ChatGPT Usage
 
-通过服务器上的 Codex CLI 读取 ChatGPT Codex 限额，并在 iPhone 锁屏的
-Scriptable 小组件中显示用量与重置时间。
+**English** | [简体中文](README.zh-CN.md)
+
+Read ChatGPT Codex rate limits from the Codex CLI on your server and display
+usage and reset times in a Scriptable widget on your iPhone Lock Screen.
 
 ```text
-Codex app-server → 本地缓存 API → HTTPS → Scriptable 锁屏小组件
+Codex app-server → local cached API → HTTPS → Scriptable Lock Screen widget
 ```
 
-服务只向手机返回窗口用量、窗口长度、重置时间和更新时间，不会向公网暴露
-Codex app-server、`~/.codex/auth.json` 或 ChatGPT 登录凭据。
+The service returns only the quota usage, window duration, reset time, and last
+update time required by the phone. It never exposes the Codex app-server,
+`~/.codex/auth.json`, or ChatGPT credentials to the public internet.
 
-## 功能
+## Features
 
-- 通过官方 [Codex App Server](https://developers.openai.com/codex/app-server)
-  的 `account/rateLimits/read` JSON-RPC 方法读取 ChatGPT Codex 限额。
-- 自动兼容单窗口和双窗口账号，不硬编码 `5h` 或 `7d`。
-- 服务器默认每 5 分钟刷新一次，失败时保留最后一次成功结果并标记为缓存。
-- HTTP API 只监听 `127.0.0.1`，使用随机 Bearer Token 鉴权。
-- Scriptable 将 URL 和 Token 保存在 iOS Keychain，并缓存最后一次成功结果。
-- 小组件请求 15 分钟后的下一次刷新；实际时间由 iOS WidgetKit 决定。
+- Reads ChatGPT Codex rate limits through the official
+  [Codex App Server](https://developers.openai.com/codex/app-server)
+  `account/rateLimits/read` JSON-RPC method.
+- Supports accounts with either one or two quota windows without hard-coding
+  `5h` or `7d`.
+- Refreshes the server-side cache every five minutes by default and keeps the
+  last successful result, marked as stale, when a refresh fails.
+- Binds the HTTP API to `127.0.0.1` by default and authenticates requests with a
+  random Bearer Token.
+- Stores the API URL and Token in the iOS Keychain and caches the last successful
+  response on the phone.
+- Requests the next widget refresh after 15 minutes; the actual schedule is
+  controlled by iOS WidgetKit.
 
-## 1. 服务器准备
+## 1. Prepare the server
 
-需要 Python 3.11+、`uv` 和已登录 ChatGPT 的 Codex CLI：
+You need Python 3.11+, `uv`, and a Codex CLI installation signed in with
+ChatGPT:
 
 ```bash
 codex --version
@@ -30,35 +40,72 @@ codex login status
 uv --version
 ```
 
-如果 `codex` 不在 systemd 的 `PATH` 中，先找到它：
+### Automated setup
+
+On a systemd-based Linux server, the bundled setup script generates `.env` with
+a random Token, automatically selects an available local port, verifies the
+Codex query, and installs and starts the user service:
+
+```bash
+./scripts/setup-server.sh
+```
+
+The script never prints the generated Token. If port 8787 is already occupied,
+it selects the next available port and writes it to `.env`.
+
+This server already uses Caddy and Cloudflare DNS, so the HTTPS route can be
+installed separately after the local service is healthy:
+
+```bash
+sudo ./scripts/install-caddy-route.sh usage.dttutty.com
+```
+
+The Caddy installer validates the candidate configuration before replacing the
+active file and keeps a timestamped backup. The hostname still needs a proxied
+Cloudflare DNS record that points to this server.
+
+After DNS is active, display the two values to enter on the iPhone:
+
+```bash
+./scripts/show-scriptable-config.sh https://usage.dttutty.com/v1/usage
+```
+
+The commands below describe the same setup manually.
+
+### Manual setup
+
+If `codex` is not available in the systemd `PATH`, locate it first:
 
 ```bash
 command -v codex
 ```
 
-复制配置并生成一个只给手机使用的随机 Token：
+Copy the configuration template and generate a random Token used only by your
+phone:
 
 ```bash
 cp .env.example .env
 openssl rand -hex 32
 ```
 
-把生成结果填入 `.env` 的 `USAGE_API_TOKEN`，并将 `CODEX_BIN` 改为
-`command -v codex` 输出的绝对路径。`.env` 已被 `.gitignore` 排除。
+Paste the generated value into `USAGE_API_TOKEN` in `.env`, then set `CODEX_BIN`
+to the absolute path printed by `command -v codex`. The real `.env` file is
+excluded by `.gitignore`.
 
-先做一次只读查询，确认 Codex 登录和协议都正常：
+Run a read-only query first to verify the Codex login and protocol:
 
 ```bash
 uv run python server.py --once
 ```
 
-启动本地服务：
+Start the local service:
 
 ```bash
 uv run python server.py
 ```
 
-另开一个终端验证鉴权和数据：
+In another terminal, load the configuration and verify both the health check and
+authenticated endpoint:
 
 ```bash
 set -a
@@ -69,7 +116,7 @@ curl -H "Authorization: Bearer $USAGE_API_TOKEN" \
   http://127.0.0.1:8787/v1/usage
 ```
 
-接口响应示例：
+Example response:
 
 ```json
 {
@@ -84,10 +131,10 @@ curl -H "Authorization: Bearer $USAGE_API_TOKEN" \
 }
 ```
 
-## 2. 后台运行
+## 2. Run in the background
 
-仓库提供了一个 systemd user service，默认项目路径为
-`~/Projects/ios_lockscreen_chatgpt_usage`：
+The repository includes a systemd user service that assumes the project is at
+`~/Projects/ios_lockscreen_chatgpt_usage`:
 
 ```bash
 mkdir -p ~/.config/systemd/user
@@ -97,79 +144,87 @@ systemctl --user enable --now ios-lockscreen-chatgpt-usage.service
 systemctl --user status ios-lockscreen-chatgpt-usage.service
 ```
 
-需要在退出 SSH 后继续运行时，可启用 user lingering：
+Enable user lingering if the service must continue running after you disconnect
+from SSH:
 
 ```bash
 sudo loginctl enable-linger "$USER"
 ```
 
-查看日志：
+Follow the service logs with:
 
 ```bash
 journalctl --user -u ios-lockscreen-chatgpt-usage.service -f
 ```
 
-如果仓库不在默认路径，先修改 service 文件中的 `WorkingDirectory`、
-`EnvironmentFile` 和 `ExecStart`。
+If the repository is stored elsewhere, update `WorkingDirectory`,
+`EnvironmentFile`, and `ExecStart` in the service file before installing it.
 
-## 3. 配置 HTTPS
+## 3. Configure HTTPS
 
-不要把 `codex app-server` 或本服务的明文 HTTP 端口直接暴露到公网。
-推荐给公网 IP 配一个域名，并用 Caddy 终止 TLS：
+Do not expose the Codex app-server or this service's plain HTTP port directly to
+the internet. Point a domain at your public IP and let Caddy terminate TLS:
 
 ```bash
 sudo cp deploy/Caddyfile.example /etc/caddy/Caddyfile
 sudo systemctl reload caddy
 ```
 
-先将 `usage.example.com` 替换成自己的域名，并让域名的 DNS 记录指向服务器。
-Caddy 只需反向代理到 `127.0.0.1:8787`。防火墙只开放 SSH、80 和 443，
-不要开放 8787。
+Replace `usage.example.com` with your domain and point its DNS record at the
+server. Caddy only needs to proxy requests to `127.0.0.1:8787`. Allow SSH, ports
+80 and 443 through the firewall, but do not open port 8787.
 
-如果不希望公开服务，也可以让 iPhone 和服务器加入同一个 Tailscale 网络，并通过
-有效 HTTPS 域名访问；无论哪种方式都保留 Bearer Token。
+If you prefer not to expose the service publicly, connect the iPhone and server
+to the same Tailscale network and access it through a valid HTTPS hostname. Keep
+Bearer Token authentication enabled in either setup.
 
-## 4. 安装 Scriptable 小组件
+## 4. Install the Scriptable widget
 
-1. 在 iPhone 安装并打开 Scriptable。
-2. 新建脚本，把
+1. Install and open Scriptable on your iPhone.
+2. Create a script and copy the complete contents of
    [`scriptable/chatgpt-usage-widget.js`](scriptable/chatgpt-usage-widget.js)
-   的内容完整复制进去。
-3. 手动运行一次脚本，填写 `https://你的域名/v1/usage` 和 `.env` 中的 Token。
-4. 长按锁屏，进入自定义界面，在小组件区域添加 Scriptable。
-5. 点击刚添加的矩形 Scriptable 小组件，选择这个脚本。
+   into it.
+3. Run the script manually once. Enter `https://your-domain/v1/usage` and the
+   Token from `.env`.
+4. Long-press the Lock Screen, choose Customize, and add Scriptable to the widget
+   area.
+5. Tap the rectangular Scriptable widget you just added and select this script.
 
-组件会根据服务器返回的 `windowDurationMins` 自动显示类似内容：
+The widget derives its labels from `windowDurationMins` and may look like this:
 
 ```text
 ChatGPT 5h 23% · 7d 41%
-5h 16:30 · 7d 周日 09:00
+5h 16:30 · 7d Sun 09:00
 ```
 
-如果账号只返回一个 7 天窗口，则会显示：
+If the account returns only one seven-day window, it will show:
 
 ```text
 ChatGPT 7d 26%
-7d 周一 16:14
+7d Mon 16:14
 ```
 
-`refreshAfterDate` 只是向 iOS 请求“不早于 15 分钟后刷新”。WidgetKit 会根据
-刷新预算、电量和使用频率决定实际执行时间，因此锁屏组件无法保证精确每 15 分钟刷新。
+`refreshAfterDate` only asks iOS to refresh no earlier than 15 minutes later.
+WidgetKit chooses the actual execution time based on its refresh budget, battery
+state, and usage frequency, so the Lock Screen widget cannot guarantee an exact
+15-minute interval.
 
-## 安全边界
+## Security boundaries
 
-- 不要把 `~/.codex/auth.json`、ChatGPT Cookie 或 OAuth Token 放进 Scriptable。
-- 不要监听 `0.0.0.0` 后再直接暴露 8787；让 Caddy 或其他 HTTPS 反向代理访问
-  loopback 服务。
-- 为此服务单独生成高熵 Token；怀疑泄漏时立刻更换 `.env` 并重启服务。
-- GitHub 仓库只提交 `.env.example`，绝不提交真实 `.env`。
+- Never put `~/.codex/auth.json`, ChatGPT cookies, or OAuth tokens in Scriptable.
+- Do not bind to `0.0.0.0` and expose port 8787 directly. Let Caddy or another
+  HTTPS reverse proxy reach the loopback service.
+- Generate a dedicated high-entropy Token for this service. Rotate it and restart
+  the service immediately if you suspect it has leaked.
+- Commit only `.env.example` to GitHub, never the real `.env` file.
 
-## 开发与测试
+## Development and tests
 
 ```bash
 uv run python -m unittest discover -s tests -v
 uv run python -m compileall -q server.py tests
 ```
 
-Codex app-server 仍属于实验接口。升级 Codex CLI 后，建议先运行 `--once` 和测试，
-确认当前版本响应仍可解析，再重启后台服务。
+The Codex app-server is still an experimental interface. After upgrading the
+Codex CLI, run `--once` and the tests before restarting the background service
+to verify that the new response remains compatible.
