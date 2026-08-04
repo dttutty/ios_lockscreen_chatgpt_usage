@@ -56,11 +56,11 @@ Codex query, and installs and starts the user service:
 The script never prints the generated Token. If port 8787 is already occupied,
 it selects the next available port and writes it to `.env`.
 
-This server already uses Caddy and Cloudflare DNS, so the HTTPS route can be
-installed separately after the local service is healthy:
+If the server uses Caddy, install an HTTPS route after the local service is
+healthy. Replace the example hostname with your own domain:
 
 ```bash
-sudo ./scripts/install-caddy-route.sh usage.dttutty.com
+sudo ./scripts/install-caddy-route.sh usage.example.com
 ```
 
 The Caddy installer validates the candidate configuration before replacing the
@@ -70,7 +70,7 @@ Cloudflare DNS record that points to this server.
 After DNS is active, display the two values to enter on the iPhone:
 
 ```bash
-./scripts/show-scriptable-config.sh https://usage.dttutty.com/v1/usage
+./scripts/show-scriptable-config.sh https://usage.example.com/v1/usage
 ```
 
 The commands below describe the same setup manually.

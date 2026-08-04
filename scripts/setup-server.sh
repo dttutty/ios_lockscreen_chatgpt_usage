@@ -144,4 +144,4 @@ printf '  Secret:    %s (not printed)\n' "$env_file"
 printf '\nIf this must survive logout, run once:\n'
 printf '  sudo loginctl enable-linger %q\n' "$USER"
 printf '\nNext, install the HTTPS route:\n'
-printf '  sudo %q usage.dttutty.com\n' "$project_dir/scripts/install-caddy-route.sh"
+printf '  sudo %q usage.example.com\n' "$project_dir/scripts/install-caddy-route.sh"

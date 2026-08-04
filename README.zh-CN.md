@@ -45,11 +45,11 @@ uv --version
 脚本不会打印生成的 Token。如果 8787 已被其他服务占用，它会自动选择下一个空闲端口，
 并将实际端口写入 `.env`。
 
-这台服务器已经使用 Caddy 和 Cloudflare DNS；本地服务健康后，可以单独安装 HTTPS
-路由：
+如果服务器使用 Caddy，本地服务健康后即可安装 HTTPS 路由。请把示例主机名替换为
+你自己的域名：
 
 ```bash
-sudo ./scripts/install-caddy-route.sh usage.dttutty.com
+sudo ./scripts/install-caddy-route.sh usage.example.com
 ```
 
 Caddy 安装脚本会先验证候选配置，再替换现有文件，同时保留带时间戳的备份。
@@ -58,7 +58,7 @@ Caddy 安装脚本会先验证候选配置，再替换现有文件，同时保�
 DNS 生效后，运行下面的脚本显示需要填入 iPhone 的两个值：
 
 ```bash
-./scripts/show-scriptable-config.sh https://usage.dttutty.com/v1/usage
+./scripts/show-scriptable-config.sh https://usage.example.com/v1/usage
 ```
 
 下面的命令说明了同一套流程的手动安装方式。

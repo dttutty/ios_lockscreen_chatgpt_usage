@@ -4,7 +4,7 @@ set -euo pipefail
 project_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 env_file="$project_dir/.env"
 caddyfile="${CADDYFILE:-/etc/caddy/Caddyfile}"
-hostname="${1:-usage.dttutty.com}"
+hostname="${1:-}"
 
 fail() {
   printf 'Error: %s\n' "$*" >&2
@@ -16,6 +16,7 @@ if ((EUID != 0)); then
   exec sudo -- "$0" "$@"
 fi
 
+[[ -n "$hostname" ]] || fail "Usage: $0 usage.example.com"
 [[ "$hostname" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$ ]] || \
   fail "Invalid hostname: $hostname"
 [[ -r "$env_file" ]] || fail "$env_file does not exist. Run setup-server.sh first."
