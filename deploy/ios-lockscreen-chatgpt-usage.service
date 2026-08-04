@@ -1,0 +1,17 @@
+[Unit]
+Description=iOS Lockscreen ChatGPT Usage API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/Projects/ios_lockscreen_chatgpt_usage
+EnvironmentFile=%h/Projects/ios_lockscreen_chatgpt_usage/.env
+ExecStart=%h/.local/bin/uv run --project %h/Projects/ios_lockscreen_chatgpt_usage python server.py
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=default.target
