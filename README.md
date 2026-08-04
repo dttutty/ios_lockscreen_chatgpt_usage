@@ -202,7 +202,7 @@ remaining, not quota consumed:
 ┌─────────┐  ┌─────────┐
 │ 1W LEFT │  │ 5H LEFT │
 │   70%   │  │    —    │
-│   TUE   │  │   N/A   │
+│  ↻ TUE  │  │   N/A   │
 └─────────┘  └─────────┘
 ```
 

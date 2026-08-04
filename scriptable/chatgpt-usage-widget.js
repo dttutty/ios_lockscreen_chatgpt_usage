@@ -294,7 +294,7 @@ function formatCircleReset(unixSeconds) {
   const formatter = new DateFormatter();
   const withinOneDay = date.getTime() - Date.now() < 24 * 60 * 60 * 1000;
   formatter.dateFormat = withinOneDay ? "HH:mm" : "EEE";
-  return formatter.string(date).toUpperCase();
+  return `↻ ${formatter.string(date).toUpperCase()}`;
 }
 
 function loadKeychainJSON(key) {
