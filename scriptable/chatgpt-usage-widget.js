@@ -28,10 +28,10 @@ async function prepareSettings(existing) {
 
   const menu = new Alert();
   menu.title = "ChatGPT Usage";
-  menu.message = "预览小组件，或修改服务器连接配置。";
-  menu.addAction("预览");
-  menu.addAction("修改配置");
-  menu.addCancelAction("取消");
+  menu.message = "Preview the widget or update the server connection.";
+  menu.addAction("Preview");
+  menu.addAction("Edit Configuration");
+  menu.addCancelAction("Cancel");
   const choice = await menu.presentSheet();
   if (choice === 1) {
     return await configure(existing);
@@ -41,15 +41,16 @@ async function prepareSettings(existing) {
 
 async function configure(existing) {
   const alert = new Alert();
-  alert.title = "连接 Usage 服务";
-  alert.message = "配置只保存在 Scriptable Keychain 中。API 地址必须使用 HTTPS。";
+  alert.title = "Connect to Usage Service";
+  alert.message =
+    "Settings are stored only in the Scriptable Keychain. The API URL must use HTTPS.";
   alert.addTextField(
     "https://usage.example.com/v1/usage",
     existing?.url || ""
   );
   alert.addSecureTextField("Bearer Token", existing?.token || "");
-  alert.addAction("保存");
-  alert.addCancelAction("取消");
+  alert.addAction("Save");
+  alert.addCancelAction("Cancel");
   const choice = await alert.presentAlert();
   if (choice === -1) {
     return existing;
@@ -59,9 +60,10 @@ async function configure(existing) {
   const token = alert.textFieldValue(1).trim();
   if (!url.startsWith("https://") || token.length < 32) {
     const invalid = new Alert();
-    invalid.title = "配置无效";
-    invalid.message = "请输入 HTTPS API 地址和至少 32 个字符的随机 Token。";
-    invalid.addAction("好");
+    invalid.title = "Invalid Configuration";
+    invalid.message =
+      "Enter an HTTPS API URL and a random Token containing at least 32 characters.";
+    invalid.addAction("OK");
     await invalid.presentAlert();
     return existing;
   }
@@ -74,7 +76,11 @@ async function configure(existing) {
 async function buildWidget(currentSettings) {
   const resultWidget = new ListWidget();
   if (!currentSettings) {
-    addMessage(resultWidget, "ChatGPT Usage", "请在 Scriptable 中运行脚本完成配置");
+    addMessage(
+      resultWidget,
+      "ChatGPT Usage",
+      "Run this script in Scriptable to complete setup"
+    );
     return resultWidget;
   }
 
@@ -87,7 +93,7 @@ async function buildWidget(currentSettings) {
     if (cached) {
       renderUsage(resultWidget, cached, true);
     } else {
-      addMessage(resultWidget, "ChatGPT Usage 暂不可用", shortError(error));
+      addMessage(resultWidget, "ChatGPT Usage Unavailable", shortError(error));
     }
   }
   return resultWidget;
@@ -107,7 +113,7 @@ async function fetchUsage(currentSettings) {
     throw new Error(`HTTP ${status}`);
   }
   if (!data.primary && !data.secondary) {
-    throw new Error("服务器没有返回可用的限额窗口");
+    throw new Error("The server returned no usable rate-limit windows");
   }
   return data;
 }
@@ -132,7 +138,7 @@ function renderUsage(resultWidget, data, fromPhoneCache) {
   );
   let detail = resetParts.join(" · ");
   if (fromPhoneCache || data.stale) {
-    detail = `缓存 · ${detail}`;
+    detail = `Cached · ${detail}`;
   }
   const reset = resultWidget.addText(detail);
   reset.font = Font.systemFont(10);
