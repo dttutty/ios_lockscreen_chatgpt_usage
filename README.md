@@ -3,7 +3,8 @@
 **English** | [简体中文](README.zh-CN.md)
 
 Read ChatGPT Codex rate limits from the Codex CLI on your server and display
-usage and reset times in a Scriptable widget on your iPhone Lock Screen.
+remaining quota and reset times in Scriptable widgets on your iPhone Lock
+Screen.
 
 ```text
 Codex app-server → local cached API → HTTPS → Scriptable Lock Screen widget
@@ -26,6 +27,8 @@ update time required by the phone. It never exposes the Codex app-server,
   random Bearer Token.
 - Stores the API URL and Token in the iOS Keychain and caches the last successful
   response on the phone.
+- Shows remaining quota rather than consumed quota, with separate weekly and
+  short-window circular widget modes.
 - Requests the next widget refresh after 15 minutes; the actual schedule is
   controlled by iOS WidgetKit.
 
@@ -186,23 +189,29 @@ Bearer Token authentication enabled in either setup.
    into it.
 3. Run the script manually once. Enter `https://your-domain/v1/usage` and the
    Token from `.env`.
-4. Long-press the Lock Screen, choose Customize, and add Scriptable to the widget
-   area.
-5. Tap the rectangular Scriptable widget you just added and select this script.
+4. Long-press the Lock Screen, choose Customize, and add two circular Scriptable
+   widgets to the widget area.
+5. Tap the first widget, select this script, and set its Parameter to `weekly`.
+6. Tap the second widget, select this script, and set its Parameter to `short`.
 
-The widget derives its labels from `windowDurationMins` and may look like this:
-
-```text
-ChatGPT 5h 23% · 7d 41%
-5h 16:30 · 7d Sun 09:00
-```
-
-If the account returns only one seven-day window, it will show:
+Both widgets run the same script. The `weekly` widget selects the longest quota
+window, while `short` selects a window shorter than one day. They display quota
+remaining, not quota consumed:
 
 ```text
-ChatGPT 7d 26%
-7d Mon 16:14
+┌─────────┐  ┌─────────┐
+│ 1W LEFT │  │ 5H LEFT │
+│   70%   │  │    —    │
+│   TUE   │  │   N/A   │
+└─────────┘  └─────────┘
 ```
+
+`N/A` means the server did not return that quota window; it is deliberately not
+shown as `0%` or `100%`. If you prefer one rectangular widget, add a rectangular
+Scriptable widget and leave Parameter empty (or set it to `combined`).
+
+When the script is run manually in Scriptable, its menu can preview the weekly
+circle, the 5-hour circle, or the combined rectangle.
 
 `refreshAfterDate` only asks iOS to refresh no earlier than 15 minutes later.
 WidgetKit chooses the actual execution time based on its refresh budget, battery
